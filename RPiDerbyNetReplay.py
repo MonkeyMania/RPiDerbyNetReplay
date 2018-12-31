@@ -8,14 +8,14 @@ from subprocess import Popen
 ################ END IMPORTS ################
 
 ################ START DERBYNET CONFIG ################
-derbynetserverIP = "192.168.1.134"
+derbynetserverIP = "http://192.168.1.134"
 checkInInt = 1
 ################ END DERBYNET CONFIG ################
 ################ START REPLAY CONFIG ################
 isoVal = 0
 expmode = 'sports'
 thisframerate = 90
-testfilename = "race1.mp4"
+testfilename = "test.mp4"
 ################ END REPLAY CONFIG ################
 ################ START SETUP GLOBALS ################
 replayurl = derbynetserverIP + "/action.php"
@@ -36,14 +36,14 @@ stream = picamera.PiCameraCircularIO(camera, seconds=7)
 ################ START CREATE VIDEO DIRECTORY ################
 dirpref = time.strftime("%Y-%m-%d recordings")
 directory = dirpref + "/"
-os.makedirs(directory)
+if not os.path.exists(directory):
+        os.makedirs(directory)
 ################ END CREATE VIDEO DIRECTORY ################
 
 ################ START FUNCTIONS ################
 # function for checking in with the server - here for cleanliness of main code
 def ReplayCheckIn(strURL, strData):
         r = requests.post(url = strURL, data = strData)
-        print(r.url)
 
         tree = ElementTree.fromstring(r.content)
 
@@ -84,75 +84,71 @@ try:
                         LastCheckIn = curTime
                         print("checked in",responseList)
             
-                if responseList[0] == "HELLO":
-                        Pstatus = 0
-                        camera.stop_recording()
-                        camera.stop_preview()
-                        ScreenBlanked(False)
-                        print("Hello!")
-                if responseList[0] == "TEST":
-                        # Ensure we only do something when nothing else was happening
-                        if Pstatus == 0:
-                                Pstatus = 2
-                                print("Testing!"," Skipback=",responseList[1]," Showings=",responseList[2]," Rate=",responseList[3])
+                        if responseList[0] == "HELLO":
+                                Pstatus = 0
+                                print("Hello!")
+                        if responseList[0] == "TEST":
+                                # Ensure we only do something when nothing else was happening
+                                if Pstatus == 0:
+                                        Pstatus = 2
+                                        print("Testing!"," Skipback=",responseList[1]," Showings=",responseList[2]," Rate=",responseList[3])
+                                        ScreenBlanked(True)
+                                        filemp4 = testfilename
+                                        replaycount = 0
+                                        showings = int(responseList[2])
+                                        playbackstarted = False
+                                        playbackduration = 15
+                        if responseList[0] == "START":
+                                Pstatus = 1
                                 ScreenBlanked(True)
-                                filemp4 = testfilename
-                                replaycount = 0
-                                showings = responseList[2]
-                                playbackstarted = False
-                                playbackduration = 15
-                if responseList[0] == "START":
-                        Pstatus = 1
-                        ScreenBlanked(True)
-                        filemp4 = directory + time.strftime("%H%M%s_") + responseList[1] + ".mp4"
-                        filename = directory + time.strftime("%H%M%s_") + responseList[1] + ".h264"
-                        camera.start_recording(stream, format='h264', intra_period = 10)
-                        camera.start_preview()
-                if responseList[0] == "REPLAY":
-                        # only do something if we get this while recording
-                        # which also means we should have filenames defined
-                        if Pstatus == 1:
-                                Pstatus = 2
-                                # Save requested last few seconds
-                                # I'm assuming here that REPLAY comes AFTER last car crosses
-                                stream.copy_to(filename, seconds=responseList[1])
-                                # playback with h264 is wonky, convert to mp4
-                                convertstring = "MP4Box -fps " + str(thisframerate * responseList[3]) + " -add " + filename + " " + filemp4
-                                os.system(convertstring)
+                                filemp4 = directory + time.strftime("%H%M%s_") + responseList[1] + ".mp4"
+                                filename = directory + time.strftime("%H%M%s_") + responseList[1] + ".h264"
+                                camera.start_recording(stream, format='h264', intra_period = 10)
+                                camera.start_preview()
+                        if responseList[0] == "REPLAY":
+                                # only do something if we get this while recording
+                                # which also means we should have filenames defined
+                                if Pstatus == 1:
+                                        Pstatus = 2
+                                        # Save requested last few seconds
+                                        # I'm assuming here that REPLAY comes AFTER last car crosses
+                                        stream.copy_to(filename, seconds=responseList[1])
+                                        # playback with h264 is wonky, convert to mp4
+                                        convertstring = "MP4Box -fps " + str(thisframerate * int(responseList[3])) + " -add " + filename + " " + filemp4
+                                        os.system(convertstring)
+                                        camera.stop_preview()
+                                        replaycount = 0
+                                        showings = int(responseList[2])
+                                        playbackstarted = False
+                                        # Estimate and pad playback time
+                                        playbackduration = int(responseList[1]) / int(responseList[3]) + 2
+                        if responseList[0] == "CANCEL":
+                                Pstatus = 0
+                                camera.stop_recording()
                                 camera.stop_preview()
-                                replaycount = 0
-                                showings = responseList[2]
-                                playbackstarted = False
-                                # Estimate and pad playback time
-                                playbackduration = responseList[1] / responseList[3] + 2
-                if responseList[0] == "CANCEL":
-                        Pstatus = 0
-                        camera.stop_recording()
-                        camera.stop_preview()
-                        ScreenBlanked(False)
-                if responseList[0] == "NORESPONSE":
-                        print("No updates")
+                                ScreenBlanked(False)
+                        if responseList[0] == "NORESPONSE":
+                                print("No updates")
         
-        # We're in playback mode
-        if Pstatus == 2:
-                # Are we currently playing back?
-                if playbackstarted == True:
-                        # Is the last playback expected complete?
-                        if curTime - playbackstart > playbackduration:
-                                playbackstarted = False
-                                showings = showings + 1
-                                # Was this the last one?
-                                if replaycount >= showings:
-                                        PreplayFin = 1
-                                        Pstatus = 0
-                                        ScreenBlanked(False)
-                                        print("playback Complete")
-                else:
-                        # start a playback (playback is false, but we're here)
-                        omxc = Popen(['omxplayer', filemp4])
-                        playbackstart = curTime
-                        playbackstarted = True
-        
+                # We're in playback mode
+                if Pstatus == 2:
+                        # Are we currently playing back?
+                        if playbackstarted == True:
+                                # Is the last playback expected complete?
+                                if curTime - playbackstart > playbackduration:
+                                        playbackstarted = False
+                                        replaycount = replaycount + 1
+                                        # Was this the last one?
+                                        if replaycount >= showings:
+                                                PreplayFin = 1
+                                                Pstatus = 0
+                                                ScreenBlanked(False)
+                        else:
+                                # start a playback (playback is false, buqt we're here)
+                                omxc = Popen(['omxplayer', filemp4])
+                                playbackstart = curTime
+                                playbackstarted = True
+       
 finally:
         pygame.display.quit()
         camera.stop_recording()
