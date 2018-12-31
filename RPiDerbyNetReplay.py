@@ -40,33 +40,33 @@ directory = dirpref + "/"
 dircreated = False
 dirsuf = 0
 while not dircreated:
-    if os.path.exists(directory):
-        #add suffix and check again
-        dirsuf = dirsuf + 1
-        directory = dirpref + "/" + str(dirsuf) + "/"
-    else:
-        #create directory
-        os.makedirs(directory)
-        dircreated = True
+	if os.path.exists(directory):
+		#add suffix and check again
+		dirsuf = dirsuf + 1
+		directory = dirpref + "/" + str(dirsuf) + "/"
+	else:
+		#create directory
+		os.makedirs(directory)
+		dircreated = True
 ################ END CREATE VIDEO DIRECTORY ################
 
 ################ START FUNCTIONS ################
 # function for checking in with the server - here for cleanliness of main code
 def ReplayCheckIn():
 	Replayparams = {'action':'replay-message', 'status':Pstatus, 'finished-replay':PreplayFin}
-    r = requests.post(url = replayurl, data = Replayparams)
+	r = requests.post(url = replayurl, data = Replayparams)
 
-    tree = ElementTree.fromstring(r.content)
+	tree = ElementTree.fromstring(r.content)
 
-    gotthemessage = False
-    for elem in tree.iter():
-        if elem.tag == "replay-message":
-            replaymessage = elem.text.split(" ")
-            gotthemessage = True
-    if gotthemessage:
-        return replaymessage
-    else:
-        return "NORESPONSE"
+	gotthemessage = False
+	for elem in tree.iter():
+	if elem.tag == "replay-message":
+		replaymessage = elem.text.split(" ")
+		gotthemessage = True
+	if gotthemessage:
+		return replaymessage
+	else:
+		return "NORESPONSE"
 
 # function for toggling the screen to be blanked or not - here due to repeated use		
 def ScreenBlanked(toggle = True):
@@ -162,8 +162,6 @@ try:
 				omxc = Popen(['omxplayer', filemp4])
 				playbackstart = curTime
 				playbackstarted = True
-				
-			
         
 finally:
     pygame.display.quit()
