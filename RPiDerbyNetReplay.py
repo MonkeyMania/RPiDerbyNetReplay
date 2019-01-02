@@ -56,7 +56,7 @@ def ReplayCheckIn(strURL, strData):
     if gotthemessage:
         return replaymessage
     else:
-        return "NORESPONSE"
+        return "NOUPDATES"
 
 # function for toggling the screen to be blanked or not - here due to repeated use      
 def ScreenBlanked(toggle = True):
@@ -74,8 +74,11 @@ def ScreenBlanked(toggle = True):
 # Setup last checkin to ensure triggered on first run
 lastcheckin = time.time() - 30
 
-#setup polling interval
+# setup polling interval
 checkininterval = checkinintervalnormal
+
+# setup camera state for tracking (hates stopping when not running)
+currentlyrecording = False
 
 try:
     while True:
@@ -113,6 +116,7 @@ try:
                 filename = directory + time.strftime("%H%M%s_") + responseList[1] + ".h264"
                 camera.start_recording(stream, format='h264', intra_period = 10)
                 camera.start_preview()
+                currentlyrecording = True
             if responseList[0] == "REPLAY":
                 # only do something if we get this while recording
                 # which also means we should have filenames defined
@@ -134,10 +138,11 @@ try:
             if responseList[0] == "CANCEL":
                 Pstatus = 0
                 checkininterval = checkinintervalnormal
-                camera.stop_recording()
-                camera.stop_preview()
+                if currentlyrecording:
+                    camera.stop_recording()
+                    camera.stop_preview()
                 ScreenBlanked(False)
-            if responseList[0] == "NORESPONSE":
+            if responseList[0] == "NOUPDATES":
                 print("No updates")
 
         # We're in playback mode
@@ -161,7 +166,8 @@ try:
 
 finally:
     pygame.display.quit()
-    camera.stop_recording()
-    camera.stop_preview()
+    if currentlyrecording:
+        camera.stop_recording()
+        camera.stop_preview()
     camera.close()
     sys.exit()
