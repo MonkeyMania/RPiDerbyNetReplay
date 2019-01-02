@@ -129,7 +129,12 @@ try:
                     # playback with h264 is wonky, convert to mp4
                     convertstring = "MP4Box -fps " + str(thisframerate * int(responseList[3])) + " -add " + filename + " " + filemp4
                     os.system(convertstring)
-                    camera.stop_preview()
+                    # Stop recording
+                    if currentlyrecording:
+                        camera.stop_recording()
+                        camera.stop_preview()
+                        currentlyrecording = False
+                    # Setup for replay
                     replaycount = 0
                     showings = int(responseList[2])
                     playbackstarted = False
@@ -141,6 +146,7 @@ try:
                 if currentlyrecording:
                     camera.stop_recording()
                     camera.stop_preview()
+                    currentlyrecording = False
                 ScreenBlanked(False)
             if responseList[0] == "NOUPDATES":
                 print("No updates")
