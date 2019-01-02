@@ -1,6 +1,6 @@
-import requests
-import time
-import os
+import requests #For http POST
+import time #For sleeping and current time for file and folder creation
+import os #For making directories
 import picamera
 import pygame.display
 from xml.etree import ElementTree
@@ -9,7 +9,8 @@ from subprocess import Popen
 
 ################ START DERBYNET CONFIG ################
 derbynetserverIP = "http://192.168.1.134"
-checkInInt = 1
+checkinintervalnormal = 1   #seconds between polling server when not racing
+checkinintervalracing = 0.25 #seconds between polling server when racing
 ################ END DERBYNET CONFIG ################
 ################ START REPLAY CONFIG ################
 isoVal = 0
@@ -71,27 +72,32 @@ def ScreenBlanked(toggle = True):
 ################ START MAIN ROUTINE ################
 
 # Setup last checkin to ensure triggered on first run
-LastCheckIn = time.time() - 30
+lastcheckin = time.time() - 30
+
+#setup polling interval
+checkininterval = checkinintervalnormal
 
 try:
     while True:
         curTime = time.time()
         #is it time to check in?
-        if curTime - LastCheckIn > checkInInt:
+        if curTime - lastcheckin > checkininterval:
             Replayparams = {'action':'replay-message', 'status':Pstatus, 'finished-replay':PreplayFin}
             responseList = ReplayCheckIn(replayurl, Replayparams)
             # Reset replayfin after last POST to only send one scan of 1
             PreplayFin = 0
-            LastCheckIn = curTime
+            lastcheckin = curTime
             print("checked in",responseList)
 
             if responseList[0] == "HELLO":
                 Pstatus = 0
+                checkininterval = checkinintervalnormal
                 print("Hello!")
             if responseList[0] == "TEST":
                 # Ensure we only do something when nothing else was happening
                 if Pstatus == 0:
                     Pstatus = 2
+                    checkininterval = checkinintervalnormal
                     print("Testing!"," Skipback=",responseList[1]," Showings=",responseList[2]," Rate=",responseList[3])
                     ScreenBlanked(True)
                     filemp4 = testfilename
@@ -101,6 +107,7 @@ try:
                     playbackduration = 15
             if responseList[0] == "START":
                 Pstatus = 1
+                checkininterval = checkinintervalracing
                 ScreenBlanked(True)
                 filemp4 = directory + time.strftime("%H%M%s_") + responseList[1] + ".mp4"
                 filename = directory + time.strftime("%H%M%s_") + responseList[1] + ".h264"
@@ -111,6 +118,7 @@ try:
                 # which also means we should have filenames defined
                 if Pstatus == 1:
                     Pstatus = 2
+                    checkininterval = checkinintervalnormal
                     # Save requested last few seconds
                     # I'm assuming here that REPLAY comes AFTER last car crosses
                     stream.copy_to(filename, seconds=responseList[1])
@@ -125,6 +133,7 @@ try:
                     playbackduration = int(responseList[1]) / int(responseList[3]) + 2
             if responseList[0] == "CANCEL":
                 Pstatus = 0
+                checkininterval = checkinintervalnormal
                 camera.stop_recording()
                 camera.stop_preview()
                 ScreenBlanked(False)
