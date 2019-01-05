@@ -45,17 +45,21 @@ if not os.path.exists(directory):
 def ReplayCheckIn(strURL, strData):
     r = requests.post(url = strURL, data = strData)
 
-    tree = ElementTree.fromstring(r.content)
+    if r.status_code == requests.codes.ok:
+        tree = ElementTree.fromstring(r.content)
 
-    gotthemessage = False
-    for elem in tree.iter():
-        if elem.tag == "replay-message":
-            replaymessage = elem.text.split(" ")
-            gotthemessage = True
-    if gotthemessage:
-        return replaymessage
+        gotthemessage = False
+        for elem in tree.iter():
+            if elem.tag == "replay-message":
+                replaymessage = elem.text.split(" ")
+                print(replaymessage)
+                gotthemessage = True
+        if gotthemessage:
+            return replaymessage
+        else:
+            return "NOUPDATES"
     else:
-        return "NOUPDATES"
+        return "NOCONTACT"
 
 # function for toggling the screen to be blanked or not - here due to repeated use      
 def ScreenBlanked(toggle = True):
@@ -111,14 +115,14 @@ try:
             if responseList[0] == "START":
                 Pstatus = 1
                 checkininterval = checkinintervalracing
-                #ScreenBlanked(True)
+                #TESTScreenBlanked(True)
                 fileroot = directory + responseList[1] + time.strftime("_%H%M%S")
                 filemp4 =  fileroot + ".mp4"
                 filename = fileroot + ".h264"
-                camera.start_recording(filename, format='h264', intra_period = 10)
-                camera.start_preview()
+                #TESTcamera.start_recording(filename, format='h264', intra_period = 10)
+                #TESTcamera.start_preview()
                 recordingstarttime = time.time()
-                currentlyrecording = True
+                currentlyrecording = False  #UNDO AFTER TESTING
             if responseList[0] == "REPLAY":
                 # only do something if we get this while recording
                 # which also means we should have filenames defined
