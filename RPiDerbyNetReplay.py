@@ -8,7 +8,7 @@ from subprocess import Popen
 ################ END IMPORTS ################
 
 ################ START DERBYNET CONFIG ################
-derbynetserverIP = "http://192.168.1.134"
+derbynetserverIP = "http://192.168.1.134"   #Server that's hosting DerbyNet - NO TRAILING SLASH!
 checkinintervalnormal = 1   #seconds between polling server when not racing
 checkinintervalracing = 0.25 #seconds between polling server when racing
 ################ END DERBYNET CONFIG ################
@@ -32,7 +32,6 @@ camera.resolution = (640, 480)
 camera.framerate = thisframerate
 camera.exposure_mode = 'sports'
 camera.iso = isoVal
-stream = picamera.PiCameraCircularIO(camera, seconds=7)
 ################ END SETUP CAMERA ################
 ################ START CREATE VIDEO DIRECTORY ################
 dirpref = time.strftime("%Y-%m-%d recordings")
@@ -92,6 +91,7 @@ try:
             lastcheckin = curTime
             print("checked in",responseList)
 
+            # We got the server response, let's check for something to do
             if responseList[0] == "HELLO":
                 Pstatus = 0
                 checkininterval = checkinintervalnormal
@@ -112,34 +112,35 @@ try:
                 Pstatus = 1
                 checkininterval = checkinintervalracing
                 ScreenBlanked(True)
-                filemp4 = directory + time.strftime("%H%M%s_") + responseList[1] + ".mp4"
-                filename = directory + time.strftime("%H%M%s_") + responseList[1] + ".h264"
-                camera.start_recording(stream, format='h264', intra_period = 10)
+                filemp4 = directory + responseList[1] + time.strftime("%H%M%s_") + ".mp4"
+                filename = directory + responseList[1] + time.strftime("%H%M%s_") + ".h264"
+                camera.start_recording(filename, format='h264', intra_period = 10)
                 camera.start_preview()
+                recordingstarttime = time.time()
                 currentlyrecording = True
             if responseList[0] == "REPLAY":
                 # only do something if we get this while recording
                 # which also means we should have filenames defined
-                if Pstatus == 1:
+                if Pstatus == 1 and currentlyrecording:
                     Pstatus = 2
                     checkininterval = checkinintervalnormal
-                    # Save requested last few seconds
-                    # I'm assuming here that REPLAY comes AFTER last car crosses
-                    stream.copy_to(filename, seconds=responseList[1])
+                    camera.stop_recording()
+                    camera.stop_preview()
+                    recordingendtime = time.time()
+                    currentlyrecording = False
+                    # Extract requested last few seconds
                     # playback with h264 is wonky, convert to mp4
-                    convertstring = "MP4Box -fps " + str(thisframerate * int(responseList[3])) + " -add " + filename + " " + filemp4
+                    recordinglength = recordingendtime - recordingstarttime
+                    replaystarttime = max(0, recordinglength - responseList[1])
+                    replayduration = recordinglength - replaystarttime
+                    convertstring = "MP4Box -fps " + str(thisframerate * int(responseList[3])) + " -splitx " + replaystarttime + ":" recordinglength + " -add " + filename + " " + filemp4
                     os.system(convertstring)
-                    # Stop recording
-                    if currentlyrecording:
-                        camera.stop_recording()
-                        camera.stop_preview()
-                        currentlyrecording = False
                     # Setup for replay
                     replaycount = 0
                     showings = int(responseList[2])
-                    playbackstarted = False
+                    replayactive = False
                     # Estimate and pad playback time
-                    playbackduration = int(responseList[1]) / int(responseList[3]) + 2
+                    playbackduration = replayduration / float(responseList[3]) + 2
             if responseList[0] == "CANCEL":
                 Pstatus = 0
                 checkininterval = checkinintervalnormal
@@ -153,22 +154,22 @@ try:
 
         # We're in playback mode
         if Pstatus == 2:
-        # Are we currently playing back?
-        if playbackstarted == True:
-            # Is the last playback expected complete?
-            if curTime - playbackstart > playbackduration:
-                playbackstarted = False
-                replaycount = replaycount + 1
-                # Was this the last one?
-                if replaycount >= showings:
-                    PreplayFin = 1
-                    Pstatus = 0
-                    ScreenBlanked(False)
-        else:
-            # start a playback (playback is false, but we're in playback status)
-            omxc = Popen(['omxplayer', filemp4])
-            playbackstart = curTime
-            playbackstarted = True
+            # Are we currently playing back?
+            if replayactive:
+                # Is the last playback expected complete?
+                if curTime - playbackstart > playbackduration:
+                    replayactive = False
+                    replaycount = replaycount + 1
+                    # Was this the last one?
+                    if replaycount >= showings:
+                        PreplayFin = 1
+                        Pstatus = 0
+                        ScreenBlanked(False)
+            else:
+                # start a playback (playback is false, but we're in playback status)
+                omxc = Popen(['omxplayer', filemp4])
+                playbackstart = curTime
+                replayactive = True
 
 finally:
     pygame.display.quit()
