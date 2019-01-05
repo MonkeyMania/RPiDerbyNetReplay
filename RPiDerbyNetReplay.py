@@ -106,14 +106,15 @@ try:
                     filemp4 = testfilename
                     replaycount = 0
                     showings = int(responseList[2])
-                    playbackstarted = False
+                    replayactive = False
                     playbackduration = 15
             if responseList[0] == "START":
                 Pstatus = 1
                 checkininterval = checkinintervalracing
-                ScreenBlanked(True)
-                filemp4 = directory + responseList[1] + time.strftime("%H%M%s_") + ".mp4"
-                filename = directory + responseList[1] + time.strftime("%H%M%s_") + ".h264"
+                #ScreenBlanked(True)
+                fileroot = directory + responseList[1] + time.strftime("_%H%M%S")
+                filemp4 =  fileroot + ".mp4"
+                filename = fileroot + ".h264"
                 camera.start_recording(filename, format='h264', intra_period = 10)
                 camera.start_preview()
                 recordingstarttime = time.time()
@@ -133,7 +134,7 @@ try:
                     recordinglength = recordingendtime - recordingstarttime
                     replaystarttime = max(0, recordinglength - responseList[1])
                     replayduration = recordinglength - replaystarttime
-                    convertstring = "MP4Box -fps " + str(thisframerate * int(responseList[3])) + " -splitx " + replaystarttime + ":" recordinglength + " -add " + filename + " " + filemp4
+                    convertstring = "MP4Box -fps " + str(thisframerate * int(responseList[3])) + " -splitx " + replaystarttime + ":" + recordinglength + " -add " + filename + " " + filemp4
                     os.system(convertstring)
                     # Setup for replay
                     replaycount = 0
