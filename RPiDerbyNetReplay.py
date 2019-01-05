@@ -50,26 +50,6 @@ def StopRecording():
     camera.stop_recording()
     camera.stop_preview()
 
-# function for checking in with the server - here for cleanliness of main code
-def ReplayCheckIn(strURL, strData):
-    r = requests.post(url = strURL, data = strData)
-
-    if r.status_code == requests.codes.ok:
-        tree = ElementTree.fromstring(r.content)
-
-        gotthemessage = False
-        for elem in tree.iter():
-            if elem.tag == "replay-message":
-                replaymessage = elem.text.split(" ")
-                print(replaymessage)
-                gotthemessage = True
-        if gotthemessage:
-            return replaymessage
-        else:
-            return "NOUPDATES"
-    else:
-        return "NOCONTACT"
-
 # function for toggling the screen to be blanked or not - here due to repeated use      
 def HideTheDesktop(hideIt = True):
     if hideIt:
