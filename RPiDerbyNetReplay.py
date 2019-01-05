@@ -39,8 +39,17 @@ directory = dirpref + "/"
 if not os.path.exists(directory):
     os.makedirs(directory)
 ################ END CREATE VIDEO DIRECTORY ################
-
 ################ START FUNCTIONS ################
+# function for starting recording
+def StartRecording(strFilename):
+    camera.start_recording(strFilename, format='h264', intra_period = 10)
+    camera.start_preview()
+
+# function for stopping recording
+def StopRecording():
+    camera.stop_recording()
+    camera.stop_preview()
+
 # function for checking in with the server - here for cleanliness of main code
 def ReplayCheckIn(strURL, strData):
     r = requests.post(url = strURL, data = strData)
@@ -62,18 +71,18 @@ def ReplayCheckIn(strURL, strData):
         return "NOCONTACT"
 
 # function for toggling the screen to be blanked or not - here due to repeated use      
-def ScreenBlanked(toggle = True):
-    if toggle == True:
+def HideTheDesktop(hideIt = True):
+    if hideIt:
         #set blank screen behind everything
-        pygame.display.init()
-        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-        screen.fill((0, 0, 0))
+        #TESTING - COMMENTING OUT ROWS BELOW TO MAKE IT EASIER TO ABORT STUCK PLAYBACK/PREVIEW
+        #pygame.display.init()
+        #screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        #screen.fill((0, 0, 0))
     else:
         pygame.display.quit()
 
 ################ END FUNCTIONS ################
 ################ START MAIN ROUTINE ################
-
 # Setup last checkin to ensure triggered on first run
 lastcheckin = time.time() - 30
 
@@ -88,76 +97,81 @@ try:
         curTime = time.time()
         #is it time to check in?
         if curTime - lastcheckin > checkininterval:
+            #Time to check - let's do this
             Replayparams = {'action':'replay-message', 'status':Pstatus, 'finished-replay':PreplayFin}
-            responseList = ReplayCheckIn(replayurl, Replayparams)
+            r = requests.post(url = replayurl, data = Replayparams)
+            #Check we got a valid response
+            if r.status_code == requests.codes.ok:
+                #Look for the replay-message data
+                tree = ElementTree.fromstring(r.content)
+                for elem in tree.iter("replay-message"):
+                    replaymessage = elem.text.split(" ")
+                    print(replaymessage)
+                    
+                    if replaymessage[0] == "HELLO":
+                        Pstatus = 0
+                        checkininterval = checkinintervalnormal
+                        print("Hello!")
+                        
+                    if replaymessage[0] == "TEST":
+                        # Ensure we only do something when nothing else was happening (otherwise ignored)
+                        if Pstatus == 0:
+                            Pstatus = 2
+                            #TIM-I DON'T THINK I WANT THIS HERE - checkininterval = checkinintervalnormal
+                            print("Testing!"," Skipback=",replaymessage[1]," Showings=",replaymessage[2]," Rate=",replaymessage[3])
+                            filemp4 = testfilename
+                            replaycount = 0
+                            showings = max(1,int(replaymessage[2])) #Did this since showing isn't technically in the spec - although might bork on no value
+                            replayactive = False
+                            playbackduration = 15
+
+                    if replaymessage[0] == "START":
+                        fileroot = directory + replaymessage[1] + time.strftime("_%H%M%S")
+                        #Since START often comes immediately following REPLAY, I'll just queue it up and if this is true then start recording at that time
+                        readytostartrecording = True
+
+                    if replaymessage[0] == "REPLAY" and Pstatus == 1:
+                        # only do something if we get this while recording (otherwise ignored since it wouldn't make sense)
+                        # which also means we should have filename and starttime defined
+                        Pstatus = 2
+                        StopRecording()
+                        recordingendtime = time.time()
+                        currentlyrecording = False
+                        # Extract requested last few seconds
+                        # playback with h264 is wonky, convert to mp4
+                        recordinglength = recordingendtime - recordingstarttime
+                        replaystarttime = max(0, recordinglength - replaymessage[1])
+                        replayduration = recordinglength - replaystarttime
+                        convertstring = "MP4Box -fps " + str(thisframerate * int(replaymessage[3])) + " -splitx " + replaystarttime + ":" + recordinglength + " -add " + fileroot + ".h264 " + fileroot + ".mp4"
+                        os.system(convertstring)
+                        # Setup for replay
+                        replaycount = 0
+                        showings = int(replaymessage[2])
+                        replayactive = False
+                        # Estimate and pad playback time
+                        playbackduration = replayduration / float(replaymessage[3]) + 3
+
+                    if replaymessage[0] == "CANCEL" and Pstatus == 1:
+                        #This command is only intended for recording, otherwise ignore
+                        Pstatus = 0
+                        if currentlyrecording:
+                            #Yes this seems redundant, but it doesn't like stopping a non-recording a lot
+                            StopRecording()
+                            currentlyrecording = False
+                        checkininterval = checkinintervalnormal
+                        #Also intercept any previously setup start recordings in this single response
+                        readytostartrecording = False
+                        HideTheDesktop(False)
+                else:
+                    #"NOUPDATES" - add code as needed
+            else:
+                #"NOCONTACT" - add code as needed
             # Reset replayfin after last POST to only send one scan of 1
             PreplayFin = 0
             lastcheckin = curTime
-            print("checked in",responseList)
 
-            # We got the server response, let's check for something to do
-            if responseList[0] == "HELLO":
-                Pstatus = 0
-                checkininterval = checkinintervalnormal
-                print("Hello!")
-            if responseList[0] == "TEST":
-                # Ensure we only do something when nothing else was happening
-                if Pstatus == 0:
-                    Pstatus = 2
-                    checkininterval = checkinintervalnormal
-                    print("Testing!"," Skipback=",responseList[1]," Showings=",responseList[2]," Rate=",responseList[3])
-                    ScreenBlanked(True)
-                    filemp4 = testfilename
-                    replaycount = 0
-                    showings = int(responseList[2])
-                    replayactive = False
-                    playbackduration = 15
-            if responseList[0] == "START":
-                Pstatus = 1
-                checkininterval = checkinintervalracing
-                #TESTScreenBlanked(True)
-                fileroot = directory + responseList[1] + time.strftime("_%H%M%S")
-                filemp4 =  fileroot + ".mp4"
-                filename = fileroot + ".h264"
-                #TESTcamera.start_recording(filename, format='h264', intra_period = 10)
-                #TESTcamera.start_preview()
-                recordingstarttime = time.time()
-                currentlyrecording = False  #UNDO AFTER TESTING
-            if responseList[0] == "REPLAY":
-                # only do something if we get this while recording
-                # which also means we should have filenames defined
-                if Pstatus == 1 and currentlyrecording:
-                    Pstatus = 2
-                    checkininterval = checkinintervalnormal
-                    camera.stop_recording()
-                    camera.stop_preview()
-                    recordingendtime = time.time()
-                    currentlyrecording = False
-                    # Extract requested last few seconds
-                    # playback with h264 is wonky, convert to mp4
-                    recordinglength = recordingendtime - recordingstarttime
-                    replaystarttime = max(0, recordinglength - responseList[1])
-                    replayduration = recordinglength - replaystarttime
-                    convertstring = "MP4Box -fps " + str(thisframerate * int(responseList[3])) + " -splitx " + replaystarttime + ":" + recordinglength + " -add " + filename + " " + filemp4
-                    os.system(convertstring)
-                    # Setup for replay
-                    replaycount = 0
-                    showings = int(responseList[2])
-                    replayactive = False
-                    # Estimate and pad playback time
-                    playbackduration = replayduration / float(responseList[3]) + 2
-            if responseList[0] == "CANCEL":
-                Pstatus = 0
-                checkininterval = checkinintervalnormal
-                if currentlyrecording:
-                    camera.stop_recording()
-                    camera.stop_preview()
-                    currentlyrecording = False
-                ScreenBlanked(False)
-            if responseList[0] == "NOUPDATES":
-                print("No updates")
-
-        # We're in playback mode
+        # Done with processing the server response, now focus first on doing any replays
+        # Then if all replays are done and ready to start recording, do it
         if Pstatus == 2:
             # Are we currently playing back?
             if replayactive:
@@ -169,17 +183,24 @@ try:
                     if replaycount >= showings:
                         PreplayFin = 1
                         Pstatus = 0
-                        ScreenBlanked(False)
+                        HideTheDesktop(False)
             else:
                 # start a playback (playback is false, but we're in playback status)
-                omxc = Popen(['omxplayer', filemp4])
+                omxc = Popen(['omxplayer', fileroot + ".mp4"])
                 playbackstart = curTime
                 replayactive = True
+                
+        elif readytostartrecording:
+            # Start recording
+            HideTheDesktop(True)
+            StartRecording(fileroot + ".h264")
+            recordingstarttime = time.time()
+            currentlyrecording = True
+            Pstatus = 1
 
 finally:
-    pygame.display.quit()
+    HideTheDesktop(False)
     if currentlyrecording:
         camera.stop_recording()
         camera.stop_preview()
     camera.close()
-    sys.exit()
