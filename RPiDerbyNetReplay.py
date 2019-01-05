@@ -176,6 +176,7 @@ try:
             StartRecording(fileroot + ".h264")
             recordingstarttime = time.time()
             currentlyrecording = True
+            checkininterval = checkinintervalracing
             Pstatus = 1
 
 finally:
