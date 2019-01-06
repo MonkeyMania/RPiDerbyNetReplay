@@ -144,12 +144,16 @@ try:
                             # If actively recording, stop and reset status
                             StopRecording()
                             currentlyrecording = False
+                            HideTheDesktop(False)
                             Pstatus = 0
                         # Regardless, revert checkin rate and disable any record triggers
                         checkininterval = checkinintervalnormal
                         #Also intercept any previously setup start recordings in this single response
                         readytostartrecording = False
-                        HideTheDesktop(False)
+
+            else:
+                # server post had a failed contact
+                print("FAILED CONTACT -", r.status_code)
 
             # Reset replayfin after last POST to only send one scan of 1
             PreplayFin = 0
