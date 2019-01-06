@@ -16,7 +16,7 @@ checkinintervalracing = 0.25 #seconds between polling server when racing
 isoVal = 0
 expmode = 'sports'
 thisframerate = 90
-testfilename = "test.mp4"
+testMP4fileroot = "test" # Don't include extension, but must be MP4
 ################ END REPLAY CONFIG ################
 ################ START SETUP GLOBALS ################
 replayurl = derbynetserverIP + "/action.php"
@@ -79,6 +79,7 @@ try:
         if curTime - lastcheckin > checkininterval:
             #Time to check - let's do this
             Replayparams = {'action':'replay-message', 'status':Pstatus, 'finished-replay':PreplayFin}
+            Print(Replayparams)
             r = requests.post(url = replayurl, data = Replayparams)
             #Check we got a valid response
             if r.status_code == requests.codes.ok:
@@ -97,16 +98,16 @@ try:
                         # Ensure we only do something when nothing else was happening (otherwise ignored)
                         if Pstatus == 0:
                             Pstatus = 2
-                            #TIM-I DON'T THINK I WANT THIS HERE - checkininterval = checkinintervalnormal
                             print("Testing!"," Skipback=",replaymessage[1]," Showings=",replaymessage[2]," Rate=",replaymessage[3])
-                            filemp4 = testfilename
+                            fileroot = testMP4fileroot
                             replaycount = 0
                             showings = max(1,int(replaymessage[2])) #Did this since showing isn't technically in the spec - although might bork on no value
                             replayactive = False
                             playbackduration = 15
 
                     if replaymessage[0] == "START":
-                        fileroot = directory + replaymessage[1] + time.strftime("_%H%M%S")
+                        # Setup filename for next recording, can't just use fileroot as it could be in use for playback
+                        nextfileroot = directory + replaymessage[1] + time.strftime("_%H%M%S")
                         #Since START often comes immediately following REPLAY, I'll just queue it up and if this is true then start recording at that time
                         readytostartrecording = True
 
@@ -142,10 +143,9 @@ try:
                         #Also intercept any previously setup start recordings in this single response
                         readytostartrecording = False
                         HideTheDesktop(False)
-                else:
-                    #"NOUPDATES" - add code as needed
             else:
-                #"NOCONTACT" - add code as needed
+                #"NOCONTACT"/Not OK response code - add code as needed
+
             # Reset replayfin after last POST to only send one scan of 1
             PreplayFin = 0
             lastcheckin = curTime
@@ -173,11 +173,12 @@ try:
         elif readytostartrecording:
             # Start recording
             HideTheDesktop(True)
+            fileroot = nextfileroot
             StartRecording(fileroot + ".h264")
             recordingstarttime = time.time()
             currentlyrecording = True
-            checkininterval = checkinintervalracing
             Pstatus = 1
+            checkininterval = checkinintervalracing
 
 finally:
     HideTheDesktop(False)
