@@ -28,13 +28,9 @@ playbackstarted = False
 camera = picamera.PiCamera()
 camera.vflip = True
 camera.hflip = True
-camera.resolution = (640, 480)
-camera.framerate = thisframerate
-camera.exposure_mode = 'sports'
-camera.iso = isoVal
 ################ END SETUP CAMERA ################
 ################ START CREATE VIDEO DIRECTORY ################
-dirpref = time.strftime("%Y-%m-%d recordings")
+dirpref = time.strftime("%Y-%m-%d_recordings")
 directory = dirpref + "/"
 if not os.path.exists(directory):
     os.makedirs(directory)
@@ -42,6 +38,10 @@ if not os.path.exists(directory):
 ################ START FUNCTIONS ################
 # function for starting recording
 def StartRecording(strFilename):
+    camera.resolution = (640, 480)
+    camera.framerate = thisframerate
+    camera.exposure_mode = 'sports'
+    camera.iso = isoVal
     camera.start_recording(strFilename, format='h264', intra_period = 10)
     camera.start_preview()
 
@@ -55,7 +55,7 @@ def HideTheDesktop(hideIt = True):
     if hideIt:
         #set blank screen behind everything
         #TESTING - COMMENTING OUT ROWS BELOW TO MAKE IT EASIER TO ABORT STUCK PLAYBACK/PREVIEW
-        #pygame.display.init()
+        pygame.display.init()
         #screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         #screen.fill((0, 0, 0))
     else:
@@ -69,8 +69,9 @@ lastcheckin = time.time() - 30
 # setup polling interval
 checkininterval = checkinintervalnormal
 
-# setup camera state for tracking (hates stopping when not running)
+# setup states for tracking
 currentlyrecording = False
+readytostartrecording = False
 
 try:
     while True:
@@ -79,7 +80,7 @@ try:
         if curTime - lastcheckin > checkininterval:
             #Time to check - let's do this
             Replayparams = {'action':'replay-message', 'status':Pstatus, 'finished-replay':PreplayFin}
-            Print(Replayparams)
+            print(Replayparams)
             r = requests.post(url = replayurl, data = Replayparams)
             #Check we got a valid response
             if r.status_code == requests.codes.ok:
@@ -115,36 +116,40 @@ try:
                         # only do something if we get this while recording (otherwise ignored since it wouldn't make sense)
                         # which also means we should have filename and starttime defined
                         Pstatus = 2
+                        checkininterval = checkinintervalnormal
                         StopRecording()
                         recordingendtime = time.time()
                         currentlyrecording = False
                         # Extract requested last few seconds
                         # playback with h264 is wonky, convert to mp4
                         recordinglength = recordingendtime - recordingstarttime
-                        replaystarttime = max(0, recordinglength - replaymessage[1])
-                        replayduration = recordinglength - replaystarttime
-                        convertstring = "MP4Box -fps " + str(thisframerate * int(replaymessage[3])) + " -splitx " + replaystarttime + ":" + recordinglength + " -add " + fileroot + ".h264 " + fileroot + ".mp4"
+                        # To get slomo we take advantage that h264 has no clue about fps and set accordingly
+                        # Problem is it messes with time calculations since I'm trying to trim just the last x seconds
+                        # Need to scale times accordingly to desired playback speed
+                        replaystarttime = max(0, recordinglength - float(replaymessage[1])) / float(replaymessage[3])
+                        replayendtime = recordinglength / float(replaymessage[3])
+                        replayduration = (replayendtime - replaystarttime)
+                        convertstring = "MP4Box -fps " + str(thisframerate * float(replaymessage[3])) + " -splitx " + str(replaystarttime) + ":" + str(replayendtime) + " -add " + fileroot + ".h264 " + fileroot + ".mp4"
+                        print(convertstring)
                         os.system(convertstring)
                         # Setup for replay
                         replaycount = 0
                         showings = int(replaymessage[2])
                         replayactive = False
                         # Estimate and pad playback time
-                        playbackduration = replayduration / float(replaymessage[3]) + 3
+                        playbackduration = replayduration + 3
 
-                    if replaymessage[0] == "CANCEL" and Pstatus == 1:
-                        #This command is only intended for recording, otherwise ignore
-                        Pstatus = 0
+                    if replaymessage[0] == "CANCEL":
                         if currentlyrecording:
-                            #Yes this seems redundant, but it doesn't like stopping a non-recording a lot
+                            # If actively recording, stop and reset status
                             StopRecording()
                             currentlyrecording = False
+                            Pstatus = 0
+                        # Regardless, revert checkin rate and disable any record triggers
                         checkininterval = checkinintervalnormal
                         #Also intercept any previously setup start recordings in this single response
                         readytostartrecording = False
                         HideTheDesktop(False)
-            else:
-                #"NOCONTACT"/Not OK response code - add code as needed
 
             # Reset replayfin after last POST to only send one scan of 1
             PreplayFin = 0
@@ -178,7 +183,10 @@ try:
             recordingstarttime = time.time()
             currentlyrecording = True
             Pstatus = 1
+            # Reset the flag that triggered us to here
+            readytostartrecording = False
             checkininterval = checkinintervalracing
+            print(camera.framerate)
 
 finally:
     HideTheDesktop(False)
