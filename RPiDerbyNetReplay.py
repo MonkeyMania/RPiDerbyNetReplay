@@ -28,6 +28,16 @@ playbackstarted = False
 camera = picamera.PiCamera()
 camera.vflip = True
 camera.hflip = True
+camera.resolution = (640, 480)
+camera.framerate = thisframerate
+camera.exposure_mode = 'sports'
+camera.iso = isoVal
+
+font = ImageFont.truetype("/home/pi/fonts/Roboto-Regular.ttf", 20) 
+fontBold = ImageFont.truetype("/home/pi/fonts/Roboto-Bold.ttf", 22)
+
+textPad = Image.new('RGB', (128, 512))
+
 ################ END SETUP CAMERA ################
 ################ START CREATE VIDEO DIRECTORY ################
 dirpref = time.strftime("%Y-%m-%d_recordings")
@@ -37,13 +47,25 @@ if not os.path.exists(directory):
 ################ END CREATE VIDEO DIRECTORY ################
 ################ START FUNCTIONS ################
 # function for starting recording
-def StartRecording(strFilename):
-    camera.resolution = (640, 480)
-    camera.framerate = thisframerate
-    camera.exposure_mode = 'sports'
-    camera.iso = isoVal
+def StartRecording(strFilename, strVideoname):
+    #Filename is what to save it as (directory and extension included)
+    #Videoname is what it's called for display
     camera.start_recording(strFilename, format='h264', intra_period = 10)
     camera.start_preview()
+
+    #Setup overlays and show them
+    overlayleft = camera.add_overlay(textPadImage.tobytes(), size=(128, 512), alpha = 255, layer = 3, fullscreen = False, window = (0,0,128,512))
+    textPadImage = textPad.copy()
+    drawTextImage = ImageDraw.Draw(textPadImage)
+    drawTextImage.text((20, 20),strVideoname[0] , font=fontBold, fill=("Red"))
+    overlayleft.update(textPadImage.tobytes())
+
+    overlayright = camera.add_overlay(textPadImage.tobytes(), size=(128, 512), alpha = 255, layer = 3, fullscreen = False, window = (0,0,128,512))
+    textPadImage = textPad.copy()
+    drawTextImage = ImageDraw.Draw(textPadImage)
+    drawTextImage.text((20, 20),strVideoname[1] , font=fontBold, fill=("Yellow"))
+    drawTextImage.text((20, 200),strVideoname[2] , font=fontBold, fill=("Yellow"))
+    overlayright.update(textPadImage.tobytes())
 
 # function for stopping recording
 def StopRecording():
@@ -107,6 +129,7 @@ try:
                             playbackduration = 15
 
                     if replaymessage[0] == "START":
+                        videonameroot = replaymessage[1].split("_")
                         # Setup filename for next recording, can't just use fileroot as it could be in use for playback
                         nextfileroot = directory + replaymessage[1] + time.strftime("_%H%M%S")
                         #Since START often comes immediately following REPLAY, I'll just queue it up and if this is true then start recording at that time
@@ -144,7 +167,6 @@ try:
                             # If actively recording, stop and reset status
                             StopRecording()
                             currentlyrecording = False
-                            HideTheDesktop(False)
                             Pstatus = 0
                         # Regardless, revert checkin rate and disable any record triggers
                         checkininterval = checkinintervalnormal
@@ -172,7 +194,6 @@ try:
                     if replaycount >= showings:
                         PreplayFin = 1
                         Pstatus = 0
-                        HideTheDesktop(False)
             else:
                 # start a playback (playback is false, but we're in playback status)
                 omxc = Popen(['omxplayer', fileroot + ".mp4"])
@@ -183,14 +204,17 @@ try:
             # Start recording
             HideTheDesktop(True)
             fileroot = nextfileroot
-            StartRecording(fileroot + ".h264")
+            StartRecording(fileroot + ".h264", videonameroot)
             recordingstarttime = time.time()
             currentlyrecording = True
             Pstatus = 1
             # Reset the flag that triggered us to here
             readytostartrecording = False
             checkininterval = checkinintervalracing
-            print(camera.framerate)
+
+        if Pstatus == 0:
+            # Nothing going on - show the desktop
+            HideTheDesktop(False)
 
 finally:
     HideTheDesktop(False)
