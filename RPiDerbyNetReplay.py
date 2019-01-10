@@ -33,10 +33,10 @@ camera.framerate = thisframerate
 camera.exposure_mode = 'sports'
 camera.iso = isoVal
 
-font = ImageFont.truetype("/home/pi/fonts/Roboto-Regular.ttf", 20) 
-fontBold = ImageFont.truetype("/home/pi/fonts/Roboto-Bold.ttf", 22)
+font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSerif.ttf", 20) 
+fontBold = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf", 48)
 
-textPad = Image.new('RGB', (128, 512))
+textPad = Image.new('RGB', (224, 960))
 
 ################ END SETUP CAMERA ################
 ################ START CREATE VIDEO DIRECTORY ################
@@ -54,13 +54,13 @@ def StartRecording(strFilename, strVideoname):
     camera.start_preview()
 
     #Setup overlays and show them
-    overlayleft = camera.add_overlay(textPadImage.tobytes(), size=(128, 512), alpha = 255, layer = 3, fullscreen = False, window = (0,0,128,512))
+    overlayleft = camera.add_overlay(textPadImage.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (0,0,224, 960))
     textPadImage = textPad.copy()
     drawTextImage = ImageDraw.Draw(textPadImage)
     drawTextImage.text((20, 20),strVideoname[0] , font=fontBold, fill=("Red"))
     overlayleft.update(textPadImage.tobytes())
 
-    overlayright = camera.add_overlay(textPadImage.tobytes(), size=(128, 512), alpha = 255, layer = 3, fullscreen = False, window = (0,0,128,512))
+    overlayright = camera.add_overlay(textPadImage.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (1696,0,224,960))
     textPadImage = textPad.copy()
     drawTextImage = ImageDraw.Draw(textPadImage)
     drawTextImage.text((20, 20),strVideoname[1] , font=fontBold, fill=("Yellow"))
@@ -76,10 +76,9 @@ def StopRecording():
 def HideTheDesktop(hideIt = True):
     if hideIt:
         #set blank screen behind everything
-        #TESTING - COMMENTING OUT ROWS BELOW TO MAKE IT EASIER TO ABORT STUCK PLAYBACK/PREVIEW
         pygame.display.init()
-        #screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-        #screen.fill((0, 0, 0))
+        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        screen.fill((0, 0, 0))
     else:
         pygame.display.quit()
 
