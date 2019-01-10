@@ -69,6 +69,8 @@ def StartRecording(strFilename, strVideoname):
 
 # function for stopping recording
 def StopRecording():
+    camera.remove_overlay(overlayleft)
+    camera.remove_overlay(overlayright)
     camera.stop_recording()
     camera.stop_preview()
 
