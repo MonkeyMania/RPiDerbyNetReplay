@@ -5,6 +5,7 @@ import picamera
 import pygame.display
 from xml.etree import ElementTree
 from subprocess import Popen
+from PIL import Image, ImageDraw, ImageFont
 ################ END IMPORTS ################
 
 ################ START DERBYNET CONFIG ################
@@ -37,6 +38,10 @@ font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSerif.ttf", 20
 fontBold = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf", 48)
 
 textPad = Image.new('RGB', (224, 960))
+textPadImage = textPad.copy()
+
+imgPad = Image.new('RGB', (224, 224))
+imgPadImage = imgPad.copy()
 
 ################ END SETUP CAMERA ################
 ################ START CREATE VIDEO DIRECTORY ################
@@ -54,23 +59,21 @@ def StartRecording(strFilename, strVideoname):
     camera.start_preview()
 
     #Setup overlays and show them
-    overlayleft = camera.add_overlay(textPadImage.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (0,0,224, 960))
-    textPadImage = textPad.copy()
-    drawTextImage = ImageDraw.Draw(textPadImage)
+    textPadImageLeft = textPad.copy()
+    drawTextImage = ImageDraw.Draw(textPadImageLeft)
     drawTextImage.text((20, 20),strVideoname[0] , font=fontBold, fill=("Red"))
-    overlayleft.update(textPadImage.tobytes())
+    overlayleft = camera.add_overlay(textPadImageLeft.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (0,0,224, 960))
 
-    overlayright = camera.add_overlay(textPadImage.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (1696,0,224,960))
-    textPadImage = textPad.copy()
-    drawTextImage = ImageDraw.Draw(textPadImage)
+    textPadImageRight = textPad.copy()
+    drawTextImage = ImageDraw.Draw(textPadImageRight)
     drawTextImage.text((20, 20),strVideoname[1] , font=fontBold, fill=("Yellow"))
     drawTextImage.text((20, 200),strVideoname[2] , font=fontBold, fill=("Yellow"))
-    overlayright.update(textPadImage.tobytes())
+    overlayright = camera.add_overlay(textPadImageRight.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (1696,0,224,960))
 
 # function for stopping recording
 def StopRecording():
-    camera.remove_overlay(overlayleft)
-    camera.remove_overlay(overlayright)
+    #camera.remove_overlay(overlayleft)
+    #camera.remove_overlay(overlayright)
     camera.stop_recording()
     camera.stop_preview()
 
