@@ -51,29 +51,10 @@ if not os.path.exists(directory):
     os.makedirs(directory)
 ################ END CREATE VIDEO DIRECTORY ################
 ################ START FUNCTIONS ################
-# function for starting recording
-def StartRecording(strFilename, strVideoname):
-    #Filename is what to save it as (directory and extension included)
-    #Videoname is what it's called for display
-    camera.start_recording(strFilename, format='h264', intra_period = 10)
-    camera.start_preview()
-
-    #Setup overlays and show them
-    textPadImageLeft = textPad.copy()
-    drawTextImage = ImageDraw.Draw(textPadImageLeft)
-    drawTextImage.text((20, 20),strVideoname[0] , font=fontBold, fill=("Red"))
-    overlayleft = camera.add_overlay(textPadImageLeft.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (0,0,224, 960))
-
-    textPadImageRight = textPad.copy()
-    drawTextImage = ImageDraw.Draw(textPadImageRight)
-    drawTextImage.text((20, 20),strVideoname[1] , font=fontBold, fill=("Yellow"))
-    drawTextImage.text((20, 200),strVideoname[2] , font=fontBold, fill=("Yellow"))
-    overlayright = camera.add_overlay(textPadImageRight.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (1696,0,224,960))
-
 # function for stopping recording
 def StopRecording():
-    #camera.remove_overlay(overlayleft)
-    #camera.remove_overlay(overlayright)
+    camera.remove_overlay(overlayleft)
+    camera.remove_overlay(overlayright)
     camera.stop_recording()
     camera.stop_preview()
 
@@ -110,6 +91,10 @@ try:
             r = requests.post(url = replayurl, data = Replayparams)
             #Check we got a valid response
             if r.status_code == requests.codes.ok:
+                # Reset replayfin after good POST to only send one scan of 1
+                PreplayFin = 0
+                lastcheckin = curTime
+
                 #Look for the replay-message data
                 tree = ElementTree.fromstring(r.content)
                 for elem in tree.iter("replay-message"):
@@ -133,6 +118,7 @@ try:
                             playbackduration = 15
 
                     if replaymessage[0] == "START":
+                        # Setup video name root array for later display since it's the {Den, Race, Heat}
                         videonameroot = replaymessage[1].split("_")
                         # Setup filename for next recording, can't just use fileroot as it could be in use for playback
                         nextfileroot = directory + replaymessage[1] + time.strftime("_%H%M%S")
@@ -181,10 +167,6 @@ try:
                 # server post had a failed contact
                 print("FAILED CONTACT -", r.status_code)
 
-            # Reset replayfin after last POST to only send one scan of 1
-            PreplayFin = 0
-            lastcheckin = curTime
-
         # Done with processing the server response, now focus first on doing any replays
         # Then if all replays are done and ready to start recording, do it
         if Pstatus == 2:
@@ -208,7 +190,23 @@ try:
             # Start recording
             HideTheDesktop(True)
             fileroot = nextfileroot
-            StartRecording(fileroot + ".h264", videonameroot)
+            #Filename is what to save it as (directory and extension included)
+            #Videoname is what it's called for display
+            camera.start_recording(fileroot, format='h264', intra_period = 10)
+            camera.start_preview()
+
+            #Setup overlays and show them
+            textPadImageLeft = textPad.copy()
+            drawTextImage = ImageDraw.Draw(textPadImageLeft)
+            drawTextImage.text((20, 20),videonameroot[0] , font=fontBold, fill=("Red"))
+            overlayleft = camera.add_overlay(textPadImageLeft.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (0,0,224, 960))
+
+            textPadImageRight = textPad.copy()
+            drawTextImage = ImageDraw.Draw(textPadImageRight)
+            drawTextImage.text((20, 20),videonameroot[1] , font=fontBold, fill=("Yellow"))
+            drawTextImage.text((20, 200),videonameroot[2] , font=fontBold, fill=("Yellow"))
+            overlayright = camera.add_overlay(textPadImageRight.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (1696,0,224,960))
+
             recordingstarttime = time.time()
             currentlyrecording = True
             Pstatus = 1
