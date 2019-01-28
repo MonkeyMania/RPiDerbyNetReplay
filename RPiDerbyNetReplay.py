@@ -34,13 +34,16 @@ camera.framerate = thisframerate
 camera.exposure_mode = 'sports'
 camera.iso = isoVal
 
-font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSerif.ttf", 20) 
-fontBold = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf", 48)
+font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSerif.ttf", 20)
+fontBold = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf", 32)
 
-textPad = Image.new('RGB', (224, 960))
-textPadImage = textPad.copy()
+textPadSideBar = Image.new('RGB', (224, 960))
+textPadSideBarImage = textPadSideBar.copy()
 
-imgPad = Image.new('RGB', (224, 224))
+textPadNameBar = Image.new('RGB', (1920, 64))
+textPadNameBarImage = textPadNameBar.copy()
+
+imgPad = Image.new('RGB', (1280, 299))
 imgPadImage = imgPad.copy()
 
 ################ END SETUP CAMERA ################
@@ -226,9 +229,6 @@ try:
                             f.write(imgresponse.content)
 
                 #Setup overlays and show them
-                namePad = Image.new('RGB', (1280, 64))
-                namePadImage = textPad.copy()
-                
                 racer1img = Image.open(directory + 'racer1.jpg')
                 racer2img = Image.open(directory + 'racer2.jpg')
                 racer3img = Image.open(directory + 'racer3.jpg')
@@ -250,32 +250,30 @@ try:
                 racer2pad.paste(racer2img, (0, 0))
                 racer3pad.paste(racer3img, (0, 0))
 
-                # Layer 3 Left Bar info
-                textPadImageLeft = textPad.copy()
+            # Layer 3 left bar overlay
+                textPadImageLeft = textPadSideBar.copy()
                 drawTextImage = ImageDraw.Draw(textPadImageLeft)
-                drawTextImage.text((20, 20),raceinfo[0] , font=fontBold, fill=("Red"))
-                overlayleft = camera.add_overlay(textPadImageLeft.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (0,0,224, 960))
+                drawTextImage.text((20, 20),raceinfo[0], font=fontBold, fill=("Red"))
+                overlayleft = camera.add_overlay(textPadImageLeft.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (0,0,224,960))
 
-                # Layer 3 Right Bar info
-                textPadImageRight = textPad.copy()
+                textPadImageRight = textPadSideBar.copy()
                 drawTextImage = ImageDraw.Draw(textPadImageRight)
-                drawTextImage.text((20, 20),"Race " + raceinfo[1], font=fontBold, fill=("Yellow"))
-                drawTextImage.text((20, 200),"Heat " + raceinfo[2] + " of " + raceinfo[3], font=fontBold, fill=("Yellow"))
+                drawTextImage.text((20, 20),"Race " + raceinfo[1] , font=fontBold, fill=("Yellow"))
+                drawTextImage.text((20, 200),"Heat "+ raceinfo[2] + " of " + raceinfo[3], font=fontBold, fill=("Yellow"))
                 overlayright = camera.add_overlay(textPadImageRight.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (1696,0,224,960))
-                
-                # Layer 4 racer name bar overlay
-                overlay = camera.add_overlay(namePadImage.tobytes(), size=(1280, 64), alpha = 128, layer = 4, fullscreen = False, window = (0,700,1280,64))
-                namePadImage = namePad.copy()
-                drawnameImage = ImageDraw.Draw(namePadImage)
-                drawnameImage.text((50, 18),racerinfo[0][0] , font=fontBold, fill=("Yellow"))
-                drawnameImage.text((300, 18),racerinfo[1][0] , font=fontBold, fill=("Yellow"))
-                drawnameImage.text((550, 18),racerinfo[2][0] , font=fontBold, fill=("Yellow"))
-                overlay.update(namePadImage.tobytes())
 
-                # Layer 4 racer pic bar overlay
-                overlay = camera.add_overlay(racer1pad.tobytes(), size=racer1img.size, alpha = 255, layer = 4, fullscreen = False, window = (200,200,446,299))
-                overlay = camera.add_overlay(racer2pad.tobytes(), size=racer2img.size, alpha = 255, layer = 4, fullscreen = False, window = (800,200,446,299))
-                overlay = camera.add_overlay(racer3pad.tobytes(), size=racer3img.size, alpha = 255, layer = 4, fullscreen = False, window = (1400,200,446,299))
+            # Layer 3 racer name bar overlay
+                textPadImageNames = textPadNameBar.copy()
+                drawTextImage = ImageDraw.Draw(textPadImageNames)
+                drawTextImage.text((300, 18),racerinfo[0][0] , font=fontBold, fill=("Yellow"))
+                drawTextImage.text((900, 18),racerinfo[1][0] , font=fontBold, fill=("Yellow"))
+                drawTextImage.text((1400, 18),racerinfo[2][0] , font=fontBold, fill=("Yellow"))
+                overlaynames = camera.add_overlay(textPadImageNames.tobytes(), size=(1920, 64), alpha = 255, layer = 3, fullscreen = False, window = (0,1016,1920,64))
+
+            # Layer 3 racer pic bar overlay
+                overlay = camera.add_overlay(racer1pad.tobytes(), size=racer1img.size, alpha = 255, layer = 3, fullscreen = False, window = (200,750,446,299))
+                overlay = camera.add_overlay(racer2pad.tobytes(), size=racer2img.size, alpha = 255, layer = 3, fullscreen = False, window = (800,750,446,299))
+                overlay = camera.add_overlay(racer3pad.tobytes(), size=racer3img.size, alpha = 255, layer = 3, fullscreen = False, window = (1300,750,446,299))
 
             checkininterval = checkinintervalracing
 
