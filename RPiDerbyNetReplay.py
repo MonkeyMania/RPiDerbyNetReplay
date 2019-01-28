@@ -63,8 +63,8 @@ def HideTheDesktop(hideIt = True):
     if hideIt:
         #set blank screen behind everything
         pygame.display.init()
-        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-        screen.fill((0, 0, 0))
+        #screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        #screen.fill((0, 0, 0))
     else:
         pygame.display.quit()
 
@@ -226,6 +226,9 @@ try:
                             f.write(imgresponse.content)
 
                 #Setup overlays and show them
+                namePad = Image.new('RGB', (1280, 64))
+                namePadImage = textPad.copy()
+                
                 racer1img = Image.open(directory + 'racer1.jpg')
                 racer2img = Image.open(directory + 'racer2.jpg')
                 racer3img = Image.open(directory + 'racer3.jpg')
@@ -261,13 +264,13 @@ try:
                 overlayright = camera.add_overlay(textPadImageRight.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (1696,0,224,960))
                 
                 # Layer 4 racer name bar overlay
-                overlay = camera.add_overlay(textPadImage.tobytes(), size=(1280, 64), alpha = 128, layer = 4, fullscreen = False, window = (0,700,1280,64))
-                textPadImage = textPad.copy()
-                drawTextImage = ImageDraw.Draw(textPadImage)
-                drawTextImage.text((50, 18),racerinfo[0][0] , font=fontBold, fill=("Yellow"))
-                drawTextImage.text((300, 18),racerinfo[1][0] , font=fontBold, fill=("Yellow"))
-                drawTextImage.text((550, 18),racerinfo[2][0] , font=fontBold, fill=("Yellow"))
-                overlay.update(textPadImage.tobytes())
+                overlay = camera.add_overlay(namePadImage.tobytes(), size=(1280, 64), alpha = 128, layer = 4, fullscreen = False, window = (0,700,1280,64))
+                namePadImage = namePad.copy()
+                drawnameImage = ImageDraw.Draw(namePadImage)
+                drawnameImage.text((50, 18),racerinfo[0][0] , font=fontBold, fill=("Yellow"))
+                drawnameImage.text((300, 18),racerinfo[1][0] , font=fontBold, fill=("Yellow"))
+                drawnameImage.text((550, 18),racerinfo[2][0] , font=fontBold, fill=("Yellow"))
+                overlay.update(namePadImage.tobytes())
 
                 # Layer 4 racer pic bar overlay
                 overlay = camera.add_overlay(racer1pad.tobytes(), size=racer1img.size, alpha = 255, layer = 4, fullscreen = False, window = (200,200,446,299))
