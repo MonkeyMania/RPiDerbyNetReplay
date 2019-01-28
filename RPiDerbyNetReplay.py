@@ -80,6 +80,11 @@ checkininterval = checkinintervalnormal
 currentlyrecording = False
 readytostartrecording = False
 
+# Setup lists - Python lists aren't easy to make on the fly and we know what they will be
+raceinfo = ["Den", "Race", "Heat", "Total Heats"]
+racerinfo = [ ["Name", "Car", "Number", "Lane", "Photo Location"], ["Name", "Car", "Number", "Lane", "Photo Location"], ["Name", "Car", "Number", "Lane", "Photo Location"] ]
+racerphotosloc = ["one", "two", "three"]
+
 try:
     while True:
         curTime = time.time()
@@ -118,8 +123,6 @@ try:
                             playbackduration = 15
 
                     if replaymessage[0] == "START":
-                        # Setup video name root array for later display since it's the {Den, Race, Heat}
-                        videonameroot = replaymessage[1].split("_")
                         # Setup filename for next recording, can't just use fileroot as it could be in use for playback
                         nextfileroot = directory + replaymessage[1] + time.strftime("_%H%M%S")
                         #Since START often comes immediately following REPLAY, I'll just queue it up and if this is true then start recording at that time
@@ -190,28 +193,87 @@ try:
             # Start recording
             HideTheDesktop(True)
             fileroot = nextfileroot
-            #Filename is what to save it as (directory and extension included)
-            #Videoname is what it's called for display
+
             camera.start_recording(fileroot, format='h264', intra_period = 10)
             camera.start_preview()
-
-            #Setup overlays and show them
-            textPadImageLeft = textPad.copy()
-            drawTextImage = ImageDraw.Draw(textPadImageLeft)
-            drawTextImage.text((20, 20),videonameroot[0] , font=fontBold, fill=("Red"))
-            overlayleft = camera.add_overlay(textPadImageLeft.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (0,0,224, 960))
-
-            textPadImageRight = textPad.copy()
-            drawTextImage = ImageDraw.Draw(textPadImageRight)
-            drawTextImage.text((20, 20),videonameroot[1] , font=fontBold, fill=("Yellow"))
-            drawTextImage.text((20, 200),videonameroot[2] , font=fontBold, fill=("Yellow"))
-            overlayright = camera.add_overlay(textPadImageRight.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (1696,0,224,960))
-
             recordingstarttime = time.time()
             currentlyrecording = True
             Pstatus = 1
             # Reset the flag that triggered us to here
             readytostartrecording = False
+
+            #Ask for race info for overlay
+            racerparams = {'query':"poll.now-racing", 'row-height':"150"}
+            Rraceinfo = requests.get(url = replayurl, params = racerparams)
+            #Check we got a valid response
+            if Rraceinfo.status_code == requests.codes.ok:
+                #Look for the data
+                tree = ElementTree.fromstring(Rraceinfo.content)
+                for currentheat in tree.iter("current-heat"):
+                    raceinfo = [currentheat.text, currentheat.attrib["round"], currentheat.attrib["heat"], currentheat.attrib["number-of-heats"] ]
+                for racer in tree.iter("racer"):
+                    racerindex = int(racer.attrib["lane"]) - 1
+                    racerinfo[racerindex] = [racer.attrib["name"], racer.attrib["carname"], racer.attrib["carnumber"], racer.attrib["lane"], racer.attrib["photo"] ]
+
+                #Get the photos
+                racerphotosloc = [racerinfo[0][4], racerinfo[1][4], racerinfo[2][4] ]
+                for num, photoloc in enumerate(racerphotosloc, start=1):
+                    imgurl = derbynetserverIP + "/" + photoloc
+                    imgresponse = requests.get(imgurl)
+                    if imgresponse.status_code == requests.codes.ok:
+                        racerimgname = "racer" + str(num) + ".jpg"
+                        with open(directory + racerimgname, 'wb') as f:
+                            f.write(imgresponse.content)
+
+                #Setup overlays and show them
+                racer1img = Image.open(directory + 'racer1.jpg')
+                racer2img = Image.open(directory + 'racer2.jpg')
+                racer3img = Image.open(directory + 'racer3.jpg')
+
+                racer1pad = Image.new('RGB', (
+                 ((racer1img.size[0] + 31) // 32) * 32,
+                 ((racer1img.size[1] + 15) // 16) * 16,
+                 ))
+                racer2pad = Image.new('RGB', (
+                 ((racer2img.size[0] + 31) // 32) * 32,
+                 ((racer2img.size[1] + 15) // 16) * 16,
+                 ))
+                racer3pad = Image.new('RGB', (
+                 ((racer3img.size[0] + 31) // 32) * 32,
+                 ((racer3img.size[1] + 15) // 16) * 16,
+                 ))
+
+                racer1pad.paste(racer1img, (0, 0))
+                racer2pad.paste(racer2img, (0, 0))
+                racer3pad.paste(racer3img, (0, 0))
+
+                # Layer 3 Left Bar info
+                textPadImageLeft = textPad.copy()
+                drawTextImage = ImageDraw.Draw(textPadImageLeft)
+                drawTextImage.text((20, 20),raceinfo[0] , font=fontBold, fill=("Red"))
+                overlayleft = camera.add_overlay(textPadImageLeft.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (0,0,224, 960))
+
+                # Layer 3 Right Bar info
+                textPadImageRight = textPad.copy()
+                drawTextImage = ImageDraw.Draw(textPadImageRight)
+                drawTextImage.text((20, 20),"Race " + raceinfo[1], font=fontBold, fill=("Yellow"))
+                drawTextImage.text((20, 200),"Heat " + raceinfo[2] + " of " + raceinfo[3], font=fontBold, fill=("Yellow"))
+                overlayright = camera.add_overlay(textPadImageRight.tobytes(), size=(224, 960), alpha = 255, layer = 3, fullscreen = False, window = (1696,0,224,960))
+                
+                # Layer 4 racer name bar overlay
+                overlay = camera.add_overlay(textPadImage.tobytes(), size=(1280, 64), alpha = 128, layer = 4, fullscreen = False, window = (0,700,1280,64))
+                textPadImage = textPad.copy()
+                drawTextImage = ImageDraw.Draw(textPadImage)
+                drawTextImage.text((50, 18),racerinfo[0][0] , font=fontBold, fill=("Yellow"))
+                drawTextImage.text((300, 18),racerinfo[1][0] , font=fontBold, fill=("Yellow"))
+                drawTextImage.text((550, 18),racerinfo[2][0] , font=fontBold, fill=("Yellow"))
+                overlay.update(textPadImage.tobytes())
+
+                # Layer 4 racer pic bar overlay
+                overlay = camera.add_overlay(racer1pad.tobytes(), size=racer1img.size, alpha = 255, layer = 4, fullscreen = False, window = (200,200,446,299))
+                overlay = camera.add_overlay(racer2pad.tobytes(), size=racer2img.size, alpha = 255, layer = 4, fullscreen = False, window = (800,200,446,299))
+                overlay = camera.add_overlay(racer3pad.tobytes(), size=racer3img.size, alpha = 255, layer = 4, fullscreen = False, window = (1400,200,446,299))
+
             checkininterval = checkinintervalracing
 
         if Pstatus == 0:
