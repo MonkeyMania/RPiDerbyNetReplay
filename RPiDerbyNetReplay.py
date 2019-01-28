@@ -58,6 +58,10 @@ if not os.path.exists(directory):
 def StopRecording():
     camera.remove_overlay(overlayleft)
     camera.remove_overlay(overlayright)
+    camera.remove_overlay(overlayname)
+    camera.remove_overlay(overlayracer1)
+    camera.remove_overlay(overlayracer2)
+    camera.remove_overlay(overlayracer3)
     camera.stop_recording()
     camera.stop_preview()
 
@@ -197,7 +201,7 @@ try:
             HideTheDesktop(True)
             fileroot = nextfileroot
 
-            camera.start_recording(fileroot, format='h264', intra_period = 10)
+            camera.start_recording(fileroot + ".h264", format='h264', intra_period = 10)
             camera.start_preview()
             recordingstarttime = time.time()
             currentlyrecording = True
@@ -268,12 +272,12 @@ try:
                 drawTextImage.text((300, 18),racerinfo[0][0] , font=fontBold, fill=("Yellow"))
                 drawTextImage.text((900, 18),racerinfo[1][0] , font=fontBold, fill=("Yellow"))
                 drawTextImage.text((1400, 18),racerinfo[2][0] , font=fontBold, fill=("Yellow"))
-                overlaynames = camera.add_overlay(textPadImageNames.tobytes(), size=(1920, 64), alpha = 255, layer = 3, fullscreen = False, window = (0,1016,1920,64))
+                overlayname = camera.add_overlay(textPadImageNames.tobytes(), size=(1920, 64), alpha = 255, layer = 3, fullscreen = False, window = (0,1016,1920,64))
 
             # Layer 3 racer pic bar overlay
-                overlay = camera.add_overlay(racer1pad.tobytes(), size=racer1img.size, alpha = 255, layer = 3, fullscreen = False, window = (200,750,446,299))
-                overlay = camera.add_overlay(racer2pad.tobytes(), size=racer2img.size, alpha = 255, layer = 3, fullscreen = False, window = (800,750,446,299))
-                overlay = camera.add_overlay(racer3pad.tobytes(), size=racer3img.size, alpha = 255, layer = 3, fullscreen = False, window = (1300,750,446,299))
+                overlayracer1 = camera.add_overlay(racer1pad.tobytes(), size=racer1img.size, alpha = 255, layer = 3, fullscreen = False, window = (200,725,446,299))
+                overlayracer2 = camera.add_overlay(racer2pad.tobytes(), size=racer2img.size, alpha = 255, layer = 3, fullscreen = False, window = (800,725,446,299))
+                overlayracer3 = camera.add_overlay(racer3pad.tobytes(), size=racer3img.size, alpha = 255, layer = 3, fullscreen = False, window = (1300,725,446,299))
 
             checkininterval = checkinintervalracing
 
