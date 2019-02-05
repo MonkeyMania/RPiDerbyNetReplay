@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 ################ END IMPORTS ################
 
 ################ START DERBYNET CONFIG ################
-derbynetserverIP = "http://192.168.1.134"   #Server that's hosting DerbyNet - NO TRAILING SLASH!
+derbynetserverIP = "http://10.10.10.87"   #Server that's hosting DerbyNet - NO TRAILING SLASH!
 checkinintervalnormal = 1   #seconds between polling server when not racing
 checkinintervalracing = 0.25 #seconds between polling server when racing
 ################ END DERBYNET CONFIG ################
@@ -225,7 +225,7 @@ try:
                 #Get the photos
                 racerphotosloc = [racerinfo[0][4], racerinfo[1][4], racerinfo[2][4] ]
                 for num, photoloc in enumerate(racerphotosloc, start=1):
-                    if photoloc <> "":
+                    if photoloc != "":
                         imgurl = derbynetserverIP + "/" + photoloc
                         imgresponse = requests.get(imgurl)
                         if imgresponse.status_code == requests.codes.ok:
@@ -255,7 +255,7 @@ try:
                 overlayname = camera.add_overlay(textPadImageNames.tobytes(), size=(1920, 64), alpha = 255, layer = 3, fullscreen = False, window = (0,1016,1920,64))
 
             # Layer 3 racer pic bar overlay
-                if racerphotosloc[0] <> "":
+                if racerphotosloc[0] != "":
                     racer1img = Image.open(directory + 'racer1.jpg')
                     racer1pad = Image.new('RGB', (
                      ((racer1img.size[0] + 31) // 32) * 32,
@@ -263,7 +263,7 @@ try:
                      ))
                     racer1pad.paste(racer1img, (0, 0))
                     overlayracer1 = camera.add_overlay(racer1pad.tobytes(), size=racer1img.size, alpha = 255, layer = 3, fullscreen = False, window = (200,725,446,299))
-                if racerphotosloc[1] <> "":
+                if racerphotosloc[1] != "":
                     racer2img = Image.open(directory + 'racer2.jpg')
                     racer2pad = Image.new('RGB', (
                      ((racer2img.size[0] + 31) // 32) * 32,
@@ -271,7 +271,7 @@ try:
                      ))
                     racer2pad.paste(racer2img, (0, 0))
                     overlayracer2 = camera.add_overlay(racer2pad.tobytes(), size=racer2img.size, alpha = 255, layer = 3, fullscreen = False, window = (800,725,446,299))
-                if racerphotosloc[2] <> "":
+                if racerphotosloc[2] != "":
                     racer3img = Image.open(directory + 'racer3.jpg')
                     racer3pad = Image.new('RGB', (
                      ((racer3img.size[0] + 31) // 32) * 32,
