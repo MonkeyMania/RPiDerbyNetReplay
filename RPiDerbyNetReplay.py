@@ -225,35 +225,15 @@ try:
                 #Get the photos
                 racerphotosloc = [racerinfo[0][4], racerinfo[1][4], racerinfo[2][4] ]
                 for num, photoloc in enumerate(racerphotosloc, start=1):
-                    imgurl = derbynetserverIP + "/" + photoloc
-                    imgresponse = requests.get(imgurl)
-                    if imgresponse.status_code == requests.codes.ok:
-                        racerimgname = "racer" + str(num) + ".jpg"
-                        with open(directory + racerimgname, 'wb') as f:
-                            f.write(imgresponse.content)
+                    if photoloc <> "":
+                        imgurl = derbynetserverIP + "/" + photoloc
+                        imgresponse = requests.get(imgurl)
+                        if imgresponse.status_code == requests.codes.ok:
+                            racerimgname = "racer" + str(num) + ".jpg"
+                            with open(directory + racerimgname, 'wb') as f:
+                                f.write(imgresponse.content)
 
                 #Setup overlays and show them
-                racer1img = Image.open(directory + 'racer1.jpg')
-                racer2img = Image.open(directory + 'racer2.jpg')
-                racer3img = Image.open(directory + 'racer3.jpg')
-
-                racer1pad = Image.new('RGB', (
-                 ((racer1img.size[0] + 31) // 32) * 32,
-                 ((racer1img.size[1] + 15) // 16) * 16,
-                 ))
-                racer2pad = Image.new('RGB', (
-                 ((racer2img.size[0] + 31) // 32) * 32,
-                 ((racer2img.size[1] + 15) // 16) * 16,
-                 ))
-                racer3pad = Image.new('RGB', (
-                 ((racer3img.size[0] + 31) // 32) * 32,
-                 ((racer3img.size[1] + 15) // 16) * 16,
-                 ))
-
-                racer1pad.paste(racer1img, (0, 0))
-                racer2pad.paste(racer2img, (0, 0))
-                racer3pad.paste(racer3img, (0, 0))
-
             # Layer 3 left bar overlay
                 textPadImageLeft = textPadSideBar.copy()
                 drawTextImage = ImageDraw.Draw(textPadImageLeft)
@@ -275,9 +255,30 @@ try:
                 overlayname = camera.add_overlay(textPadImageNames.tobytes(), size=(1920, 64), alpha = 255, layer = 3, fullscreen = False, window = (0,1016,1920,64))
 
             # Layer 3 racer pic bar overlay
-                overlayracer1 = camera.add_overlay(racer1pad.tobytes(), size=racer1img.size, alpha = 255, layer = 3, fullscreen = False, window = (200,725,446,299))
-                overlayracer2 = camera.add_overlay(racer2pad.tobytes(), size=racer2img.size, alpha = 255, layer = 3, fullscreen = False, window = (800,725,446,299))
-                overlayracer3 = camera.add_overlay(racer3pad.tobytes(), size=racer3img.size, alpha = 255, layer = 3, fullscreen = False, window = (1300,725,446,299))
+                if racerphotosloc[0] <> "":
+                    racer1img = Image.open(directory + 'racer1.jpg')
+                    racer1pad = Image.new('RGB', (
+                     ((racer1img.size[0] + 31) // 32) * 32,
+                     ((racer1img.size[1] + 15) // 16) * 16,
+                     ))
+                    racer1pad.paste(racer1img, (0, 0))
+                    overlayracer1 = camera.add_overlay(racer1pad.tobytes(), size=racer1img.size, alpha = 255, layer = 3, fullscreen = False, window = (200,725,446,299))
+                if racerphotosloc[1] <> "":
+                    racer2img = Image.open(directory + 'racer2.jpg')
+                    racer2pad = Image.new('RGB', (
+                     ((racer2img.size[0] + 31) // 32) * 32,
+                     ((racer2img.size[1] + 15) // 16) * 16,
+                     ))
+                    racer2pad.paste(racer2img, (0, 0))
+                    overlayracer2 = camera.add_overlay(racer2pad.tobytes(), size=racer2img.size, alpha = 255, layer = 3, fullscreen = False, window = (800,725,446,299))
+                if racerphotosloc[2] <> "":
+                    racer3img = Image.open(directory + 'racer3.jpg')
+                    racer3pad = Image.new('RGB', (
+                     ((racer3img.size[0] + 31) // 32) * 32,
+                     ((racer3img.size[1] + 15) // 16) * 16,
+                     ))
+                    racer3pad.paste(racer3img, (0, 0))
+                    overlayracer3 = camera.add_overlay(racer3pad.tobytes(), size=racer3img.size, alpha = 255, layer = 3, fullscreen = False, window = (1300,725,446,299))
 
             checkininterval = checkinintervalracing
 
