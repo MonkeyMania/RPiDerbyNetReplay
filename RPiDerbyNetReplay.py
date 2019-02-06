@@ -33,6 +33,7 @@ camera.resolution = (640, 480)
 camera.framerate = thisframerate
 camera.exposure_mode = 'sports'
 camera.iso = isoVal
+stream = picamera.PiCameraCircularIO(camera, seconds=7)
 
 font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSerif.ttf", 20)
 fontBold = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf", 32)
@@ -140,17 +141,29 @@ try:
                         # which also means we should have filename and starttime defined
                         Pstatus = 2
                         checkininterval = checkinintervalnormal
-                        StopRecording()
+                        stream.copy_to(fileroot + ".h264", seconds=5)
                         recordingendtime = time.time()
+                        StopRecording()
                         currentlyrecording = False
-                        # Extract requested last few seconds
-                        # playback with h264 is wonky, convert to mp4
-                        recordinglength = recordingendtime - recordingstarttime
-                        # To get slomo we take advantage that h264 has no clue about fps and set accordingly
-                        # Problem is it messes with time calculations since I'm trying to trim just the last x seconds
-                        # Need to scale times accordingly to desired playback speed
-                        replaystarttime = max(0, recordinglength - float(replaymessage[1])) / float(replaymessage[3])
-                        replayendtime = recordinglength / float(replaymessage[3])
+
+                        #Ask for race info for overlay
+                        racerparams = {'query':"poll.now-racing", 'row-height':"150"}
+                        Rraceinfo = requests.get(url = replayurl, params = racerparams)
+                        #Check we got a valid response
+                        if Rraceinfo.status_code == requests.codes.ok:
+                            #Look for the data
+                            tree = ElementTree.fromstring(Rraceinfo.content)
+                            for racer in tree.iter("racer"):
+                                racerindex = int(racer.attrib["lane"]) - 1
+                                finishtimes[racerindex] = float(racer.attrib["finishtime"])
+                            firstcrossedago = max(finishtimes) - min(finishtimes)
+                            # Want to show first car finishing, will show at least requested timeframe with a 35% prerun
+                            replaystarttime = min(5 - float(replaymessage[1]), max(0, 5 - firstcrossedago - 0.35 * float(replaymessage[1]))) / float(replaymessage[3])
+                            replayendtime = min(5, replaystarttime + float(replaymessage[1])) / float(replaymessage[3])
+                        else:
+                            replaystarttime = (5 - float(replaymessage[1])) / float(replaymessage[3])
+                            replayendtime = 5 / float(replaymessage[3])
+
                         replayduration = (replayendtime - replaystarttime)
                         convertstring = "MP4Box -fps " + str(thisframerate * float(replaymessage[3])) + " -splitx " + str(replaystarttime) + ":" + str(replayendtime) + " -add " + fileroot + ".h264 " + fileroot + ".mp4"
                         print(convertstring)
@@ -201,7 +214,7 @@ try:
             HideTheDesktop(True)
             fileroot = nextfileroot
 
-            camera.start_recording(fileroot + ".h264", format='h264', intra_period = 10)
+            camera.start_recording(stream, format='h264', intra_period = 10)
             camera.start_preview()
             recordingstarttime = time.time()
             currentlyrecording = True
