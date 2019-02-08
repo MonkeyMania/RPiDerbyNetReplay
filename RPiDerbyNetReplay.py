@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 ################ END IMPORTS ################
 
 ################ START DERBYNET CONFIG ################
-derbynetserverIP = "http://10.10.10.87"   #Server that's hosting DerbyNet - NO TRAILING SLASH!
+derbynetserverIP = "http://192.168.1.134"   #Server that's hosting DerbyNet - NO TRAILING SLASH!
 checkinintervalnormal = 1   #seconds between polling server when not racing
 checkinintervalracing = 0.25 #seconds between polling server when racing
 ################ END DERBYNET CONFIG ################
@@ -141,39 +141,20 @@ try:
                         # which also means we should have filename and starttime defined
                         Pstatus = 2
                         checkininterval = checkinintervalnormal
-                        stream.copy_to(fileroot + ".h264", seconds=5)
-                        recordingendtime = time.time()
+                        replayseconds = int(replaymessage[1])
+                        showings = int(replaymessage[2])
+                        playbackspeed = float(replaymessage[3])
+                        stream.copy_to(fileroot + ".h264", seconds=replayseconds)
                         StopRecording()
                         currentlyrecording = False
 
-                        #Ask for race info for overlay
-                        racerparams = {'query':"poll.now-racing", 'row-height':"150"}
-                        Rraceinfo = requests.get(url = replayurl, params = racerparams)
-                        #Check we got a valid response
-                        if Rraceinfo.status_code == requests.codes.ok:
-                            #Look for the data
-                            tree = ElementTree.fromstring(Rraceinfo.content)
-                            for racer in tree.iter("racer"):
-                                racerindex = int(racer.attrib["lane"]) - 1
-                                finishtimes[racerindex] = float(racer.attrib["finishtime"])
-                            firstcrossedago = max(finishtimes) - min(finishtimes)
-                            # Want to show first car finishing, will show at least requested timeframe with a 35% prerun
-                            replaystarttime = min(5 - float(replaymessage[1]), max(0, 5 - firstcrossedago - 0.35 * float(replaymessage[1]))) / float(replaymessage[3])
-                            replayendtime = min(5, replaystarttime + float(replaymessage[1])) / float(replaymessage[3])
-                        else:
-                            replaystarttime = (5 - float(replaymessage[1])) / float(replaymessage[3])
-                            replayendtime = 5 / float(replaymessage[3])
-
-                        replayduration = (replayendtime - replaystarttime)
-                        convertstring = "MP4Box -fps " + str(thisframerate * float(replaymessage[3])) + " -splitx " + str(replaystarttime) + ":" + str(replayendtime) + " -add " + fileroot + ".h264 " + fileroot + ".mp4"
-                        print(convertstring)
+                        convertstring = "MP4Box -fps " + str(thisframerate * playbackspeed) + " -add " + fileroot + ".h264 " + fileroot + ".mp4"
                         os.system(convertstring)
                         # Setup for replay
                         replaycount = 0
-                        showings = int(replaymessage[2])
                         replayactive = False
                         # Estimate and pad playback time
-                        playbackduration = replayduration + 3
+                        playbackduration = replayseconds / playbackspeed + 3
 
                     if replaymessage[0] == "CANCEL":
                         if currentlyrecording:
